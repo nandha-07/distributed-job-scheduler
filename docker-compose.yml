@@ -1,0 +1,24 @@
+# Local infrastructure. Start with:  docker compose up -d
+# Compose automatically reads variables from the .env file in this folder.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: job-scheduler-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      # host:container — apps on your machine reach it at localhost:${POSTGRES_PORT}
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Named volume: data survives container restarts and recreation.
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

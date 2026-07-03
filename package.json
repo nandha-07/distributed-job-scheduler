@@ -1,0 +1,25 @@
+{
+  "name": "job-scheduler",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Distributed job scheduling platform — API, workers, scheduler, dashboard",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "tsx watch apps/api/src/index.ts",
+    "dev:worker": "tsx watch apps/worker/src/index.ts",
+    "dev:scheduler": "tsx watch apps/scheduler/src/index.ts",
+    "db:ping": "tsx packages/db/src/ping.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

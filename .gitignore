@@ -1,0 +1,13 @@
+# Dependencies (reinstallable from package.json — never commit)
+node_modules/
+
+# Local secrets and machine-specific config — NEVER commit
+.env
+
+# Build output
+dist/
+
+# Logs & OS noise
+*.log
+.DS_Store
+Thumbs.db

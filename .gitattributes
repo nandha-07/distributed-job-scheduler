@@ -1,0 +1,3 @@
+# Normalize line endings: store LF in the repo regardless of OS.
+# Prevents Windows (CRLF) vs Linux (LF) diffs polluting every commit.
+* text=auto eol=lf
