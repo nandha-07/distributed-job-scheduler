@@ -56,3 +56,22 @@ reveal whether the email exists (prevents account enumeration).
 
 Authorization rule for every Part B route: requester must be a member of
 the organization that (transitively) owns the resource.
+
+## Endpoints — M5 (jobs, schedules, batches)
+
+| Method & path | Purpose |
+|---|---|
+| POST /queues/:queueId/jobs | create job — immediate (default), delayed (`delaySeconds`), or scheduled (`runAt` ISO). Optional `idempotencyKey`, `retryPolicyId`, `priority`, `payload` |
+| GET /queues/:queueId/jobs?state=&name=&limit=&offset= | job explorer with filters |
+| POST /queues/:queueId/jobs/batch | create N jobs atomically (≤1000), linked to a batch |
+| GET /jobs/:id | job detail + execution history + logs |
+| POST /jobs/:id/cancel | cancel; 409 unless state is scheduled/queued |
+| GET /batches/:id | batch + progress (job counts by state) |
+| POST /queues/:queueId/schedules | create cron template; validates expression & timezone; precomputes next_run_at |
+| GET /queues/:queueId/schedules | list schedules |
+| PATCH /schedules/:id | `{isActive}` activate/deactivate |
+| DELETE /schedules/:id | remove schedule |
+
+Idempotency contract: same `idempotencyKey` on the same queue returns the
+original job with `deduplicated: true` and status 200 (not 201). Clients can
+therefore retry job creation blindly after network failures.

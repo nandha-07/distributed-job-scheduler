@@ -11,6 +11,7 @@ import { requestContext } from "./middleware/request-context.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { authRouter } from "./routes/auth.routes.js";
 import { resourcesRouter } from "./routes/resources.routes.js";
+import { jobsRouter } from "./routes/jobs.routes.js";
 
 const log = createLogger("api");
 const app = express();
@@ -30,6 +31,7 @@ app.get("/health", async (_req, res) => {
 
 app.use("/api/v1", authRouter);
 app.use("/api/v1", resourcesRouter);
+app.use("/api/v1", jobsRouter);
 
 // Anything unmatched → uniform 404 (must come after all routes).
 app.use((_req, res) => {

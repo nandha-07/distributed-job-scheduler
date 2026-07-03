@@ -6,6 +6,7 @@
   "main": "src/index.ts",
   "dependencies": {
     "@jobs/config": "*",
+    "cron-parser": "^4.9.0",
     "pino": "^9.5.0"
   }
 }
