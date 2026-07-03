@@ -28,6 +28,13 @@ const EnvSchema = z.object({
   DATABASE_URL: z
     .string()
     .min(1, "DATABASE_URL is required — copy .env.example to .env"),
+
+  // Signs JWTs. Anyone with this value can forge logins — secret, long,
+  // random, never committed. Min length enforced to prevent weak secrets.
+  JWT_SECRET: z
+    .string()
+    .min(32, "JWT_SECRET must be at least 32 chars — see .env.example"),
+  JWT_EXPIRES_IN: z.string().default("7d"),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

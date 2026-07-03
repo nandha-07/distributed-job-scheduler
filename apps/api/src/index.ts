@@ -1,23 +1,23 @@
 /**
- * API server entry point.
- * M2 scope: boot, config, logging, /health, graceful shutdown.
- * Routes/controllers/services arrive in M4 once the schema exists (M3).
+ * API server entry point: middleware pipeline + route mounting.
+ * Order matters and is deliberate:
+ *   request-context → json parser → routes → 404 → error handler (last).
  */
 import express from "express";
 import { config } from "@jobs/config";
 import { createLogger } from "@jobs/core";
 import { pool, closePool } from "@jobs/db";
+import { requestContext } from "./middleware/request-context.js";
+import { errorHandler } from "./middleware/error-handler.js";
+import { authRouter } from "./routes/auth.routes.js";
 
 const log = createLogger("api");
 const app = express();
 
-app.use(express.json());
+app.use(requestContext);
+app.use(express.json({ limit: "1mb" }));
 
-/**
- * Health endpoint. "Am I up, and can I reach my database?"
- * Returns 200 when healthy, 503 when the DB is unreachable —
- * standard contract for load balancers and uptime monitors.
- */
+/** Health: am I up, can I reach the DB? 200 healthy / 503 degraded. */
 app.get("/health", async (_req, res) => {
   try {
     await pool.query("SELECT 1");
@@ -27,16 +27,22 @@ app.get("/health", async (_req, res) => {
   }
 });
 
+app.use("/api/v1", authRouter);
+
+// Anything unmatched → uniform 404 (must come after all routes).
+app.use((_req, res) => {
+  res
+    .status(404)
+    .json({ error: { code: "NOT_FOUND", message: "Route not found" } });
+});
+
+// Error handler is ALWAYS last in the pipeline.
+app.use(errorHandler);
+
 const server = app.listen(config.API_PORT, () => {
   log.info({ port: config.API_PORT }, "API server listening");
 });
 
-/**
- * Graceful shutdown: on Ctrl+C (SIGINT) or `docker stop` (SIGTERM),
- * stop accepting new connections, let in-flight requests finish,
- * close DB connections, then exit. Killing abruptly instead can drop
- * requests mid-flight and leak connections.
- */
 async function shutdown(signal: string) {
   log.info({ signal }, "shutting down");
   server.close(async () => {
