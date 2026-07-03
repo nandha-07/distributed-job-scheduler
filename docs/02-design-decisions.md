@@ -72,3 +72,26 @@ cooperation from the job handler (a worker can crash after doing the work but
 before recording completion). We therefore guarantee **at-least-once** and
 require handlers to be idempotent where it matters. This matches SQS, Sidekiq,
 Celery. The executions table gives dedup/audit capability.
+
+## DD-007: UUID primary keys, bigserial for append-only internals
+
+UUIDs (`gen_random_uuid()`) for all externally visible entities:
+non-guessable in URLs, generatable without DB coordination (distributed-
+friendly). `bigserial` for `job_logs` and `worker_heartbeats`: append-only,
+high-volume, internal-only — sequential ids keep those hot B-trees compact.
+Trade-off consciously split per table type rather than one dogmatic rule.
+
+## DD-008: Retry policy snapshotted onto each job (deliberate denormalization)
+
+Editing a queue's retry policy must not change behavior of jobs already in
+flight, so `max_attempts`/`retry_strategy`/delays are copied to the job row
+at creation. Normalization trades away reproducibility here; we keep
+`retry_policies` as the normalized source for *configuration*, snapshot for
+*execution*. Same approach as Sidekiq/Oban.
+
+## DD-009: TEXT + CHECK constraints instead of native Postgres ENUMs
+
+Native ENUM types make value changes painful (can't drop values; awkward
+migrations). `text` + `CHECK (x IN (...))` provides identical integrity and
+one-line evolution. Authoritative state list lives in
+`packages/core/src/job-state.ts`; the CHECK mirrors it.

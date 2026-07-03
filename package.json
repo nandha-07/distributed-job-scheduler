@@ -12,6 +12,7 @@
     "dev:worker": "tsx watch apps/worker/src/index.ts",
     "dev:scheduler": "tsx watch apps/scheduler/src/index.ts",
     "db:ping": "tsx packages/db/src/ping.ts",
+    "db:migrate": "tsx packages/db/src/migrate.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
