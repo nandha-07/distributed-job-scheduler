@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
-import type { Paginated, Project, Queue, QueueStats, Worker } from "../types";
+import type { Paginated, Project, Queue, QueueStats, ThroughputPoint, Worker } from "../types";
 import { StatsCards } from "../components/StatsCards";
+import { ThroughputChart } from "../components/ThroughputChart";
 import { JobsTable } from "../components/JobsTable";
 import { DlqTable } from "../components/DlqTable";
 import { SchedulesTable } from "../components/SchedulesTable";
 import { CreateJobForm } from "../components/CreateJobForm";
+import { QueueSettings } from "../components/QueueSettings";
 import { WorkersPanel } from "../components/WorkersPanel";
 
-type Tab = "jobs" | "dlq" | "schedules" | "create";
+type Tab = "jobs" | "dlq" | "schedules" | "create" | "settings";
 const POLL_MS = 3000;
 
 export function Dashboard({ onLogout }: { onLogout: () => void }) {
@@ -16,6 +18,7 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [queues, setQueues] = useState<Queue[]>([]);
   const [queueId, setQueueId] = useState<string | null>(null);
   const [stats, setStats] = useState<QueueStats | null>(null);
+  const [throughput, setThroughput] = useState<ThroughputPoint[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [tab, setTab] = useState<Tab>("jobs");
   const [tick, setTick] = useState(0); // children re-fetch when this changes
@@ -45,8 +48,12 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
     setQueues(qs.data);
     setWorkers(w.workers);
     if (queueId) {
-      const s = await api<{ stats: QueueStats }>(`/queues/${queueId}/stats`);
+      const [s, t] = await Promise.all([
+        api<{ stats: QueueStats }>(`/queues/${queueId}/stats`),
+        api<{ throughput: ThroughputPoint[] }>(`/queues/${queueId}/throughput`),
+      ]);
       setStats(s.stats);
+      setThroughput(t.throughput);
     }
     setTick((t) => t + 1);
   }, [project, queueId]);
@@ -99,10 +106,11 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
               </button>
             </div>
             {stats && <StatsCards stats={stats} />}
+            <ThroughputChart points={throughput} />
             <div className="tabs">
-              {(["jobs", "dlq", "schedules", "create"] as Tab[]).map((t) => (
+              {(["jobs", "dlq", "schedules", "create", "settings"] as Tab[]).map((t) => (
                 <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>
-                  {t === "dlq" ? "Dead letters" : t === "create" ? "+ New job" : t[0]!.toUpperCase() + t.slice(1)}
+                  {t === "dlq" ? "Dead letters" : t === "create" ? "+ New job" : t === "settings" ? "⚙ Settings" : t[0]!.toUpperCase() + t.slice(1)}
                 </button>
               ))}
             </div>
@@ -110,6 +118,7 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
             {tab === "dlq" && <DlqTable queueId={queue.id} tick={tick} onChanged={() => void refresh()} />}
             {tab === "schedules" && <SchedulesTable queueId={queue.id} tick={tick} />}
             {tab === "create" && <CreateJobForm queueId={queue.id} onCreated={() => { setTab("jobs"); void refresh(); }} />}
+            {tab === "settings" && <QueueSettings queue={queue} onSaved={() => void refresh()} />}
           </>
         ) : (
           <p className="muted">No queue selected.</p>

@@ -3,6 +3,7 @@ export interface Project { id: string; name: string }
 export interface Queue {
   id: string; name: string; priority: number; max_concurrency: number;
   is_paused: boolean;
+  rate_limit_per_sec: number | null;
 }
 export interface QueueStats {
   byState: Record<string, number>;
@@ -33,3 +34,4 @@ export interface Schedule {
   job_name: string; is_active: boolean; next_run_at: string | null;
 }
 export interface Paginated<T> { data: T[]; pagination: { total: number } }
+export interface ThroughputPoint { minute: string; completed: number; failed: number }

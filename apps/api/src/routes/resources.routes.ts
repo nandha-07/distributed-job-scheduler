@@ -30,6 +30,7 @@ resourcesRouter.delete("/queues/:id", asyncHandler(queues.remove));
 resourcesRouter.post("/queues/:id/pause", asyncHandler(queues.pause));
 resourcesRouter.post("/queues/:id/resume", asyncHandler(queues.resume));
 resourcesRouter.get("/queues/:id/stats", asyncHandler(queues.stats));
+resourcesRouter.get("/queues/:id/throughput", asyncHandler(queues.throughput));
 
 // Retry policies
 resourcesRouter.post("/projects/:projectId/retry-policies", validate(retryPolicies.createRetryPolicySchema), asyncHandler(retryPolicies.create));

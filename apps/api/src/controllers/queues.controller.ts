@@ -87,3 +87,11 @@ export async function stats(req: Request, res: Response): Promise<void> {
   );
   res.json({ stats: s });
 }
+
+export async function throughput(req: Request, res: Response): Promise<void> {
+  const points = await queuesService.getQueueThroughput(
+    req.userId as string,
+    uuidParam(req, "id"),
+  );
+  res.json({ throughput: points });
+}

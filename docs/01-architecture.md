@@ -10,27 +10,27 @@ dashboard provides observability and control.
 
 ```
                         ┌────────────────────────────┐
-                        │        React Dashboard      │
-                        │  queues · jobs · workers    │
+                        │        React Dashboard     │
+                        │  queues · jobs · workers   │
                         └──────────────┬─────────────┘
                                        │ HTTPS (REST, JWT)
                                        ▼
 ┌──────────────┐        ┌────────────────────────────┐
-│  Scheduler    │        │         API Server          │
-│  (1 process)  │        │  auth · validation · CRUD   │
-│               │        │  job submission · metrics   │
+│  Scheduler    │       │         API Server         │
+│  (1 process)  │       │  auth · validation · CRUD  │
+│               │       │  job submission · metrics  │
 └──────┬───────┘        └──────────────┬─────────────┘
        │ promotes due                   │ reads/writes
        │ delayed & cron jobs            ▼
        │                ┌────────────────────────────┐
-       └───────────────▶│         PostgreSQL          │
-                        │  system of record + queue   │
-                        │  (FOR UPDATE SKIP LOCKED)   │
+       └─────────────▶  │         PostgreSQL         │
+                        │  system of record + queue  │
+                        │  (FOR UPDATE SKIP LOCKED)  │
                         └──────────────┬─────────────┘
                                        │ poll · claim · heartbeat
                         ┌──────────────┴─────────────┐
-                        │     Worker fleet (N procs)  │
-                        │  claim → execute → report   │
+                        │     Worker fleet (N procs) │
+                        │  claim → execute → report  │
                         └────────────────────────────┘
 ```
 

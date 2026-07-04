@@ -152,3 +152,36 @@ export async function stats(queueId: string): Promise<QueueStats> {
     failedLastHour: Number(lastHour.rows[0]?.failed ?? 0),
   };
 }
+
+export interface ThroughputPoint {
+  minute: string; // ISO timestamp truncated to the minute
+  completed: number;
+  failed: number;
+}
+
+/**
+ * Per-minute throughput for the last N minutes, from execution history
+ * (job_executions carries finished_at + terminal state per attempt).
+ */
+export async function throughput(
+  queueId: string,
+  minutes = 30,
+): Promise<ThroughputPoint[]> {
+  const res = await pool.query<{ minute: Date; completed: string; failed: string }>(
+    `SELECT date_trunc('minute', e.finished_at) AS minute,
+            count(*) FILTER (WHERE e.state = 'succeeded') AS completed,
+            count(*) FILTER (WHERE e.state IN ('failed','timed_out','lost')) AS failed
+       FROM job_executions e
+       JOIN jobs j ON j.id = e.job_id
+      WHERE j.queue_id = $1
+        AND e.finished_at > now() - make_interval(mins => $2)
+      GROUP BY 1
+      ORDER BY 1`,
+    [queueId, minutes],
+  );
+  return res.rows.map((r) => ({
+    minute: r.minute.toISOString(),
+    completed: Number(r.completed),
+    failed: Number(r.failed),
+  }));
+}

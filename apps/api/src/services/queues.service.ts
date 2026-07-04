@@ -2,7 +2,7 @@
  * Queues business logic.
  */
 import { queuesRepo, retryPoliciesRepo } from "@jobs/db";
-import type { QueueRow, QueueStats } from "@jobs/db";
+import type { QueueRow, QueueStats, ThroughputPoint } from "@jobs/db";
 import { badRequest, notFound } from "../lib/errors.js";
 import {
   requireProjectAccess,
@@ -102,4 +102,12 @@ export async function getQueueStats(
 ): Promise<QueueStats> {
   await requireQueueAccess(userId, queueId);
   return queuesRepo.stats(queueId);
+}
+
+export async function getQueueThroughput(
+  userId: string,
+  queueId: string,
+): Promise<ThroughputPoint[]> {
+  await requireQueueAccess(userId, queueId);
+  return queuesRepo.throughput(queueId);
 }

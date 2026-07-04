@@ -8,7 +8,7 @@ export * as projectsRepo from "./repositories/projects.repo.js";
 export * as queuesRepo from "./repositories/queues.repo.js";
 export * as retryPoliciesRepo from "./repositories/retry-policies.repo.js";
 export type { ProjectRow } from "./repositories/projects.repo.js";
-export type { QueueRow, QueueStats } from "./repositories/queues.repo.js";
+export type { QueueRow, QueueStats, ThroughputPoint } from "./repositories/queues.repo.js";
 export type { RetryPolicyRow } from "./repositories/retry-policies.repo.js";
 export * as jobsRepo from "./repositories/jobs.repo.js";
 export * as schedulesRepo from "./repositories/schedules.repo.js";
