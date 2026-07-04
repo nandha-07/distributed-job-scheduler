@@ -31,10 +31,11 @@ export async function createQueue(
     description?: string;
     priority?: number;
     maxConcurrency?: number;
+    rateLimitPerSec?: number;
     defaultRetryPolicyId?: string;
   },
 ): Promise<QueueRow> {
-  await requireProjectAccess(userId, projectId);
+  await requireProjectAccess(userId, projectId, "admin");
   if (params.defaultRetryPolicyId) {
     await assertPolicyInProject(params.defaultRetryPolicyId, projectId);
   }
@@ -63,10 +64,11 @@ export async function updateQueue(
     description?: string;
     priority?: number;
     maxConcurrency?: number;
+    rateLimitPerSec?: number;
     defaultRetryPolicyId?: string;
   },
 ): Promise<QueueRow> {
-  const { queue } = await requireQueueAccess(userId, queueId);
+  const { queue } = await requireQueueAccess(userId, queueId, "admin");
   if (params.defaultRetryPolicyId) {
     await assertPolicyInProject(params.defaultRetryPolicyId, queue.project_id);
   }
@@ -80,7 +82,7 @@ export async function setQueuePaused(
   queueId: string,
   paused: boolean,
 ): Promise<QueueRow> {
-  await requireQueueAccess(userId, queueId);
+  await requireQueueAccess(userId, queueId, "admin");
   const updated = await queuesRepo.setPaused(queueId, paused);
   if (!updated) throw notFound("Queue");
   return updated;
@@ -90,7 +92,7 @@ export async function deleteQueue(
   userId: string,
   queueId: string,
 ): Promise<void> {
-  await requireQueueAccess(userId, queueId);
+  await requireQueueAccess(userId, queueId, "admin");
   await queuesRepo.remove(queueId);
 }
 

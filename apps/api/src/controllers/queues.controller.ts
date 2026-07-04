@@ -9,6 +9,7 @@ export const createQueueSchema = z.object({
   description: z.string().max(1000).optional(),
   priority: z.number().int().min(-100).max(100).optional(),
   maxConcurrency: z.number().int().min(1).max(1000).optional(),
+  rateLimitPerSec: z.number().int().min(1).max(10_000).optional(),
   defaultRetryPolicyId: z.string().uuid().optional(),
 });
 

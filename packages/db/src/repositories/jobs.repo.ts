@@ -206,3 +206,18 @@ export async function logsForJob(
   );
   return res.rows;
 }
+
+/** Workflow dependencies: record that jobId waits on each dep. */
+export async function addDependencies(
+  db: Queryable,
+  jobId: string,
+  dependsOn: string[],
+): Promise<void> {
+  for (const dep of dependsOn) {
+    await db.query(
+      `INSERT INTO job_dependencies (job_id, depends_on_job_id)
+       VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      [jobId, dep],
+    );
+  }
+}

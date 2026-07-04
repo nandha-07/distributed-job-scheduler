@@ -22,3 +22,4 @@ export type { WorkerRow } from "./repositories/workers.repo.js";
 export * as dlqRepo from "./repositories/dlq.repo.js";
 export * as schedulerRepo from "./repositories/scheduler.repo.js";
 export type { DlqEntryRow } from "./repositories/dlq.repo.js";
+export { listenForQueuedJobs } from "./listen.js";

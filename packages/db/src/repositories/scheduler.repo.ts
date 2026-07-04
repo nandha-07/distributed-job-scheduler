@@ -18,6 +18,25 @@ export async function promoteDueJobs(): Promise<number> {
   return res.rowCount ?? 0;
 }
 
+/**
+ * A job whose dependency dead-lettered or was cancelled can never run —
+ * cancel it explicitly instead of leaving it invisible forever.
+ */
+export async function cancelOrphanedDependents(): Promise<number> {
+  const res = await pool.query(
+    `UPDATE jobs SET state = 'cancelled', finished_at = now(),
+            last_error = 'cancelled: a dependency failed permanently'
+      WHERE state IN ('queued', 'scheduled')
+        AND EXISTS (
+          SELECT 1 FROM job_dependencies d
+            JOIN jobs dj ON dj.id = d.depends_on_job_id
+           WHERE d.job_id = jobs.id
+             AND dj.state IN ('dead_letter', 'cancelled')
+        )`,
+  );
+  return res.rowCount ?? 0;
+}
+
 const DEFAULT_RETRY = {
   maxAttempts: 3,
   retryStrategy: "exponential" as const,

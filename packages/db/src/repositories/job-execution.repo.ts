@@ -45,6 +45,18 @@ export async function claimJobs(
         WHERE j.state = 'queued'
           AND j.run_at <= now()
           AND q.is_paused = false
+          -- workflow dependencies: invisible until all deps completed
+          AND NOT EXISTS (
+            SELECT 1 FROM job_dependencies d
+              JOIN jobs dj ON dj.id = d.depends_on_job_id
+             WHERE d.job_id = j.id AND dj.state <> 'completed'
+          )
+          -- rate limit: claims in the last second stay under the cap (soft)
+          AND (q.rate_limit_per_sec IS NULL OR (
+            SELECT count(*) FROM jobs r3
+             WHERE r3.queue_id = j.queue_id
+               AND r3.claimed_at > now() - interval '1 second'
+          ) < q.rate_limit_per_sec)
      ),
      eligible AS (
        SELECT id FROM ranked

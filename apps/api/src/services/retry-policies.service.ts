@@ -17,7 +17,7 @@ export async function createRetryPolicy(
     jitter?: boolean;
   },
 ): Promise<RetryPolicyRow> {
-  await requireProjectAccess(userId, projectId);
+  await requireProjectAccess(userId, projectId, "admin");
   return retryPoliciesRepo.create({ projectId, ...params });
 }
 

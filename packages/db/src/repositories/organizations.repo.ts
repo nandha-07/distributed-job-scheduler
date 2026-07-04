@@ -63,3 +63,16 @@ export async function isMember(
   );
   return (res.rowCount ?? 0) > 0;
 }
+
+/** RBAC primitive: the user's role in the org, or null if not a member. */
+export async function getRole(
+  userId: string,
+  organizationId: string,
+): Promise<OrgRole | null> {
+  const res = await pool.query<{ role: OrgRole }>(
+    `SELECT role FROM organization_members
+      WHERE user_id = $1 AND organization_id = $2`,
+    [userId, organizationId],
+  );
+  return res.rows[0]?.role ?? null;
+}

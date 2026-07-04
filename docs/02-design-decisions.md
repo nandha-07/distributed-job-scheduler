@@ -142,3 +142,30 @@ upgrade). Dev-time CORS avoided entirely with Vite's /api proxy — same shape
 as a production reverse proxy. JWT kept in localStorage: pragmatic for an
 internal dashboard; the hardened alternative (httpOnly cookies) is noted as
 the XSS-resistant option.
+
+## DD-015: RBAC via role ranks on org membership
+
+member(1) < admin(2) < owner(3), stored on organization_members. Reads and
+job creation need member; queue/schedule/policy/DLQ management needs admin;
+project deletion needs owner. Non-members still get 404 (anti-enumeration);
+members lacking rank get an honest 403 naming the required role.
+
+## DD-016: Per-queue rate limiting inside the claim query (soft)
+
+`rate_limit_per_sec` caps claims per queue per rolling second, enforced as
+an extra predicate in the claim CTE. Soft under concurrent claimers, like
+DD-010, and for the same fan-out reason.
+
+## DD-017: Workflow dependencies gate claiming; failed deps cancel dependents
+
+jobs wait invisibly (claim predicate: all deps completed). If a dependency
+dead-letters or is cancelled the scheduler cancels dependents explicitly —
+an invisible forever-stuck job would be worse than a clear cancellation.
+
+## DD-018: Event-driven execution is a hybrid, not a replacement
+
+pg_notify trigger on jobs→queued; workers LISTEN and interrupt their idle
+sleep, giving ~ms dispatch latency. The poll loop remains: NOTIFY is
+fire-and-forget (a notification sent while the worker is busy or
+disconnected is lost), so polling is the correctness backstop and NOTIFY is
+the latency optimization.

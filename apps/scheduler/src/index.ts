@@ -24,8 +24,9 @@ async function tickLoop(): Promise<void> {
     try {
       const promoted = await schedulerRepo.promoteDueJobs();
       const spawned = await schedulerRepo.materializeDueSchedules();
-      if (promoted > 0 || spawned > 0) {
-        log.info({ promoted, spawned }, "tick");
+      const orphaned = await schedulerRepo.cancelOrphanedDependents();
+      if (promoted > 0 || spawned > 0 || orphaned > 0) {
+        log.info({ promoted, spawned, orphaned }, "tick");
       }
     } catch (err) {
       log.error({ err }, "tick failed - will retry next tick");

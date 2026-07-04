@@ -6,7 +6,7 @@ import {
   batchesRepo,
   dlqRepo,
   jobsRepo,
-  pool,
+  queuesRepo,
   retryPoliciesRepo,
   withTransaction,
 } from "@jobs/db";
@@ -64,6 +64,7 @@ export interface CreateJobInput {
   delaySeconds?: number; // relative delay → scheduled
   idempotencyKey?: string;
   retryPolicyId?: string;
+  dependsOn?: string[];
 }
 
 function resolveTiming(input: CreateJobInput): {
@@ -117,15 +118,32 @@ export async function createJob(
   );
   const timing = resolveTiming(input);
 
-  const job = await jobsRepo.create(pool, {
-    queueId,
-    name: input.name,
-    payload: input.payload,
-    priority: input.priority,
-    state: timing.state,
-    runAt: timing.runAt,
-    idempotencyKey: input.idempotencyKey ?? null,
-    ...retry,
+  // Workflow dependencies: every dep must exist and live in this project.
+  const dependsOn = input.dependsOn ?? [];
+  for (const depId of dependsOn) {
+    const dep = await jobsRepo.findById(depId);
+    if (!dep) throw badRequest("DEPENDENCY_NOT_FOUND", `Dependency ${depId} does not exist`);
+    const depQueue = await queuesRepo.findById(dep.queue_id);
+    if (!depQueue || depQueue.project_id !== project.id) {
+      throw badRequest("DEPENDENCY_PROJECT_MISMATCH", "Dependencies must belong to the same project");
+    }
+  }
+
+  const job = await withTransaction(async (tx) => {
+    const created = await jobsRepo.create(tx, {
+      queueId,
+      name: input.name,
+      payload: input.payload,
+      priority: input.priority,
+      state: timing.state,
+      runAt: timing.runAt,
+      idempotencyKey: input.idempotencyKey ?? null,
+      ...retry,
+    });
+    if (dependsOn.length > 0) {
+      await jobsRepo.addDependencies(tx, created.id, dependsOn);
+    }
+    return created;
   });
   return { job, deduplicated: false };
 }
@@ -240,6 +258,9 @@ export async function retryDlqJob(
   const job = await jobsRepo.findById(jobId);
   if (!job) throw notFound("Job");
   await requireQueueAccess(userId, job.queue_id).catch(() => {
+    throw notFound("Job");
+  });
+  await requireQueueAccess(userId, job.queue_id, "admin").catch(() => {
     throw notFound("Job");
   });
   const retried = await dlqRepo.retryFromDlq(jobId, userId);

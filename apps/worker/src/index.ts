@@ -14,7 +14,7 @@
 import os from "node:os";
 import { config } from "@jobs/config";
 import { createLogger } from "@jobs/core";
-import { closePool, jobExecRepo, workersRepo } from "@jobs/db";
+import { closePool, jobExecRepo, listenForQueuedJobs, workersRepo } from "@jobs/db";
 import { executeJob } from "./executor.js";
 
 const log = createLogger("worker");
@@ -56,6 +56,25 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Event-driven wakeup (bonus): LISTEN notifications interrupt the idle
+// sleep, so new jobs start in milliseconds. Polling remains the fallback.
+let wake: (() => void) | null = null;
+function interruptibleSleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      wake = null;
+      resolve();
+    }, ms);
+    wake = () => {
+      clearTimeout(timer);
+      wake = null;
+      resolve();
+    };
+  });
+}
+const unlisten = await listenForQueuedJobs(() => wake?.());
+log.info("listening for job_queued notifications (event-driven wakeups on)");
+
 async function pollLoop(): Promise<void> {
   while (running) {
     const free = config.WORKER_MAX_CONCURRENCY - active;
@@ -86,7 +105,8 @@ async function pollLoop(): Promise<void> {
     }
 
     // Adaptive polling: busy -> check again immediately; idle -> back off.
-    await sleep(jobs.length > 0 ? 50 : config.WORKER_POLL_INTERVAL_MS);
+    if (jobs.length > 0) await sleep(50);
+    else await interruptibleSleep(config.WORKER_POLL_INTERVAL_MS);
   }
 }
 
@@ -105,6 +125,7 @@ async function shutdown(signal: string): Promise<void> {
 
   clearInterval(heartbeatTimer);
   clearInterval(reaperTimer);
+  await unlisten().catch(() => {});
   await workersRepo.setState(worker.id, "offline").catch(() => {});
   await closePool();
   log.info("worker stopped cleanly");

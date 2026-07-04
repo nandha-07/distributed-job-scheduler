@@ -44,7 +44,7 @@ export async function updateProject(
   projectId: string,
   params: { name?: string; description?: string },
 ): Promise<ProjectRow> {
-  await requireProjectAccess(userId, projectId);
+  await requireProjectAccess(userId, projectId, "admin");
   const updated = await projectsRepo.update(projectId, params);
   if (!updated) throw notFound("Project");
   return updated;
@@ -54,6 +54,6 @@ export async function deleteProject(
   userId: string,
   projectId: string,
 ): Promise<void> {
-  await requireProjectAccess(userId, projectId);
+  await requireProjectAccess(userId, projectId, "owner");
   await projectsRepo.remove(projectId);
 }

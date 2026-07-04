@@ -18,7 +18,7 @@ export async function createSchedule(
     payload?: unknown;
   },
 ): Promise<ScheduleRow> {
-  await requireQueueAccess(userId, queueId);
+  await requireQueueAccess(userId, queueId, "admin");
 
   const timezone = input.timezone ?? "UTC";
   if (!isValidTimezone(timezone)) {
@@ -61,6 +61,9 @@ export async function setScheduleActive(
   const schedule = await schedulesRepo.findById(scheduleId);
   if (!schedule) throw notFound("Schedule");
   await requireQueueAccess(userId, schedule.queue_id).catch(() => {
+    throw notFound("Schedule");
+  });
+  await requireQueueAccess(userId, schedule.queue_id, "admin").catch(() => {
     throw notFound("Schedule");
   });
   const updated = await schedulesRepo.setActive(scheduleId, isActive);

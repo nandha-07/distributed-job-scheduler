@@ -12,6 +12,7 @@ export interface QueueRow {
   max_concurrency: number;
   is_paused: boolean;
   default_retry_policy_id: string | null;
+  rate_limit_per_sec: number | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -23,11 +24,12 @@ export async function create(params: {
   priority?: number;
   maxConcurrency?: number;
   defaultRetryPolicyId?: string | null;
+  rateLimitPerSec?: number | null;
 }): Promise<QueueRow> {
   const res = await pool.query<QueueRow>(
     `INSERT INTO queues
-       (project_id, name, description, priority, max_concurrency, default_retry_policy_id)
-     VALUES ($1, $2, $3, COALESCE($4, 0), COALESCE($5, 10), $6)
+       (project_id, name, description, priority, max_concurrency, default_retry_policy_id, rate_limit_per_sec)
+     VALUES ($1, $2, $3, COALESCE($4, 0), COALESCE($5, 10), $6, $7)
      RETURNING *`,
     [
       params.projectId,
@@ -36,6 +38,7 @@ export async function create(params: {
       params.priority ?? null,
       params.maxConcurrency ?? null,
       params.defaultRetryPolicyId ?? null,
+      params.rateLimitPerSec ?? null,
     ],
   );
   const row = res.rows[0];
@@ -78,6 +81,7 @@ export async function update(
     priority?: number;
     maxConcurrency?: number;
     defaultRetryPolicyId?: string | null;
+    rateLimitPerSec?: number | null;
   },
 ): Promise<QueueRow | null> {
   const res = await pool.query<QueueRow>(
@@ -86,7 +90,8 @@ export async function update(
             description             = COALESCE($3, description),
             priority                = COALESCE($4, priority),
             max_concurrency         = COALESCE($5, max_concurrency),
-            default_retry_policy_id = COALESCE($6, default_retry_policy_id)
+            default_retry_policy_id = COALESCE($6, default_retry_policy_id),
+            rate_limit_per_sec      = COALESCE($7, rate_limit_per_sec)
       WHERE id = $1
       RETURNING *`,
     [
@@ -96,6 +101,7 @@ export async function update(
       params.priority ?? null,
       params.maxConcurrency ?? null,
       params.defaultRetryPolicyId ?? null,
+      params.rateLimitPerSec ?? null,
     ],
   );
   return res.rows[0] ?? null;

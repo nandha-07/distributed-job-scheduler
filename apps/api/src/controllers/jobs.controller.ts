@@ -13,6 +13,7 @@ export const createJobSchema = z.object({
   delaySeconds: z.number().int().min(1).max(31_536_000).optional(), // ≤ 1 year
   idempotencyKey: z.string().min(1).max(255).optional(),
   retryPolicyId: z.string().uuid().optional(),
+  dependsOn: z.array(z.string().uuid()).max(20).optional(),
 });
 
 export const createBatchSchema = z.object({
