@@ -133,3 +133,12 @@ UNIQUE(job_id, attempt): the retried job's attempt numbers repeated. Fix:
 execution rows number attempts HISTORICALLY (max+1 per job), while
 jobs.attempts tracks the budget of the current life only. The audit trail
 now shows a dead-lettered-then-retried job as executions 1..3, 4..6.
+
+## DD-014: Dashboard — polling + Vite proxy + localStorage token
+
+Live updates by 3s polling (assignment allows polling or WebSockets; polling
+is stateless and consistent with DD-005; WebSockets remain the documented
+upgrade). Dev-time CORS avoided entirely with Vite's /api proxy — same shape
+as a production reverse proxy. JWT kept in localStorage: pragmatic for an
+internal dashboard; the hardened alternative (httpOnly cookies) is noted as
+the XSS-resistant option.

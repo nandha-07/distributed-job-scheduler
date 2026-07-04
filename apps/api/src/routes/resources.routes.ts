@@ -9,6 +9,7 @@ import { requireAuth } from "../middleware/auth.js";
 import * as projects from "../controllers/projects.controller.js";
 import * as queues from "../controllers/queues.controller.js";
 import * as retryPolicies from "../controllers/retry-policies.controller.js";
+import { workersRepo } from "@jobs/db";
 
 export const resourcesRouter = Router();
 resourcesRouter.use(requireAuth);
@@ -33,3 +34,8 @@ resourcesRouter.get("/queues/:id/stats", asyncHandler(queues.stats));
 // Retry policies
 resourcesRouter.post("/projects/:projectId/retry-policies", validate(retryPolicies.createRetryPolicySchema), asyncHandler(retryPolicies.create));
 resourcesRouter.get("/projects/:projectId/retry-policies", asyncHandler(retryPolicies.list));
+
+// Worker fleet (infrastructure visibility for the dashboard)
+resourcesRouter.get("/workers", asyncHandler(async (_req, res) => {
+  res.json({ workers: await workersRepo.list() });
+}));

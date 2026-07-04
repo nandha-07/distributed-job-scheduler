@@ -11,6 +11,7 @@
     "dev:api": "tsx watch apps/api/src/index.ts",
     "dev:worker": "tsx watch apps/worker/src/index.ts",
     "dev:scheduler": "tsx watch apps/scheduler/src/index.ts",
+    "dev:dashboard": "npm run dev --workspace apps/dashboard",
     "db:ping": "tsx packages/db/src/ping.ts",
     "db:migrate": "tsx packages/db/src/migrate.ts",
     "typecheck": "tsc --noEmit"
