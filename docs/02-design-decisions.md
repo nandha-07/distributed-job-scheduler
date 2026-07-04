@@ -95,3 +95,19 @@ Native ENUM types make value changes painful (can't drop values; awkward
 migrations). `text` + `CHECK (x IN (...))` provides identical integrity and
 one-line evolution. Authoritative state list lives in
 `packages/core/src/job-state.ts`; the CHECK mirrors it.
+
+## DD-010: Queue concurrency limit is enforced as a soft limit
+
+The claim query counts a queue's in-flight jobs and skips the queue when at
+`max_concurrency`. Two workers claiming in the same instant can each pass the
+check before either commits, briefly overshooting the limit. The strict
+alternative — locking the queue row during claims — would serialize all
+claiming per queue and destroy fan-out. Sidekiq/pg-boss make the same
+trade-off. Per-worker concurrency, by contrast, is a hard local limit
+(semaphore counter).
+
+## DD-011: Any worker may run the reaper
+
+Rather than a dedicated monitor process, every worker periodically reaps
+stale workers. All reaper steps are idempotent UPDATEs, so concurrent
+reaping is harmless, and the system heals as long as ANY worker survives.

@@ -16,3 +16,6 @@ export * as batchesRepo from "./repositories/batches.repo.js";
 export type { JobRow, JobExecutionRow, JobLogRow } from "./repositories/jobs.repo.js";
 export type { ScheduleRow } from "./repositories/schedules.repo.js";
 export type { BatchRow } from "./repositories/batches.repo.js";
+export * as workersRepo from "./repositories/workers.repo.js";
+export * as jobExecRepo from "./repositories/job-execution.repo.js";
+export type { WorkerRow } from "./repositories/workers.repo.js";

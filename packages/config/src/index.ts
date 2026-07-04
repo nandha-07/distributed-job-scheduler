@@ -35,6 +35,13 @@ const EnvSchema = z.object({
     .string()
     .min(32, "JWT_SECRET must be at least 32 chars — see .env.example"),
   JWT_EXPIRES_IN: z.string().default("7d"),
+
+  // Worker tuning (sensible defaults; override per-worker via env).
+  WORKER_MAX_CONCURRENCY: z.coerce.number().int().min(1).max(100).default(5),
+  WORKER_POLL_INTERVAL_MS: z.coerce.number().int().min(50).default(1000),
+  WORKER_HEARTBEAT_INTERVAL_MS: z.coerce.number().int().min(1000).default(5000),
+  WORKER_STALE_TIMEOUT_MS: z.coerce.number().int().min(5000).default(30000),
+  WORKER_SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().min(1000).default(30000),
 });
 
 const parsed = EnvSchema.safeParse(process.env);
