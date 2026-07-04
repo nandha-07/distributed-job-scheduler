@@ -78,6 +78,13 @@ function JobRow({ job, open, detail, onClick, onCancel }: {
         <tr>
           <td colSpan={5}>
             <div className="detail">
+              <div className="row" style={{ justifyContent: "space-between" }}>
+                <span className="muted">Job ID: <code>{job.id}</code></span>
+                <button className="ghost chip" onClick={(e) => {
+                  e.stopPropagation();
+                  void navigator.clipboard.writeText(job.id);
+                }}>Copy ID</button>
+              </div>
               {job.last_error && <code className="err">{job.last_error}</code>}
               <h3>Executions</h3>
               {detail?.executions.map((e) => (

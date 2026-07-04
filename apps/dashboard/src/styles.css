@@ -205,3 +205,9 @@ code { color: #a5b4fc; }
   th:nth-child(4), td:nth-child(4) { display: none; } /* hide Run-at on phones */
   .login-card { width: 100%; max-width: 380px; }
 }
+
+.chip { padding: 4px 10px; font-size: 12px; border-radius: 99px; }
+.danger-zone {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  border: 1px solid #57272c; border-radius: 10px; padding: 12px 14px; margin-top: 6px;
+}

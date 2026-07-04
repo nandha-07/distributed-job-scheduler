@@ -3,7 +3,7 @@ import { api } from "../api";
 import type { Queue } from "../types";
 
 /** Queue configuration editor: PATCHes only the fields the user changed. */
-export function QueueSettings({ queue, onSaved }: { queue: Queue; onSaved: () => void }) {
+export function QueueSettings({ queue, onSaved, onDeleted }: { queue: Queue; onSaved: () => void; onDeleted: () => void }) {
   const [maxConcurrency, setMaxConcurrency] = useState(queue.max_concurrency);
   const [priority, setPriority] = useState(queue.priority);
   const [rateLimit, setRateLimit] = useState<string>(
@@ -69,6 +69,18 @@ export function QueueSettings({ queue, onSaved }: { queue: Queue; onSaved: () =>
         Changing settings requires the admin role. Retry policy defaults are
         managed via the API (retry policies are project-level resources).
       </p>
+      <div className="danger-zone">
+        <div>
+          <strong>Delete this queue</strong>
+          <p className="muted">Removes the queue and ALL its jobs, executions and logs (cascade). Cannot be undone.</p>
+        </div>
+        <button type="button" className="danger" onClick={() => {
+          if (window.confirm(`Really delete queue "${queue.name}" and all its jobs?`)) {
+            void api(`/queues/${queue.id}`, { method: "DELETE" }).then(onDeleted)
+              .catch((err) => setError(err instanceof Error ? err.message : "Delete failed"));
+          }
+        }}>Delete queue</button>
+      </div>
     </form>
   );
 }
