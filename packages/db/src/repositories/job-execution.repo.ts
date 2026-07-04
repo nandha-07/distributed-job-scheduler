@@ -35,10 +35,25 @@ export async function claimJobs(
                 PARTITION BY j.queue_id
                 ORDER BY j.priority DESC, j.run_at, j.created_at
               ) AS rn,
-              q.max_concurrency - (
-                SELECT count(*) FROM jobs r
-                 WHERE r.queue_id = j.queue_id
-                   AND r.state IN ('claimed', 'running')
+              -- free_slots = min(concurrency budget, rate budget). Folding
+              -- BOTH caps into the window rank enforces them within a single
+              -- claim batch (a plain WHERE predicate cannot: this statement's
+              -- own claims aren't visible to its subqueries — bug class first
+              -- caught in M6, caught again for rate limiting by the M9 tests).
+              LEAST(
+                q.max_concurrency - (
+                  SELECT count(*) FROM jobs r
+                   WHERE r.queue_id = j.queue_id
+                     AND r.state IN ('claimed', 'running')
+                ),
+                COALESCE(
+                  q.rate_limit_per_sec - (
+                    SELECT count(*) FROM jobs r3
+                     WHERE r3.queue_id = j.queue_id
+                       AND r3.claimed_at > now() - interval '1 second'
+                  ),
+                  1000000000
+                )
               ) AS free_slots
          FROM jobs j
          JOIN queues q ON q.id = j.queue_id
@@ -51,12 +66,6 @@ export async function claimJobs(
               JOIN jobs dj ON dj.id = d.depends_on_job_id
              WHERE d.job_id = j.id AND dj.state <> 'completed'
           )
-          -- rate limit: claims in the last second stay under the cap (soft)
-          AND (q.rate_limit_per_sec IS NULL OR (
-            SELECT count(*) FROM jobs r3
-             WHERE r3.queue_id = j.queue_id
-               AND r3.claimed_at > now() - interval '1 second'
-          ) < q.rate_limit_per_sec)
      ),
      eligible AS (
        SELECT id FROM ranked

@@ -169,3 +169,12 @@ sleep, giving ~ms dispatch latency. The poll loop remains: NOTIFY is
 fire-and-forget (a notification sent while the worker is busy or
 disconnected is lost), so polling is the correctness backstop and NOTIFY is
 the latency optimization.
+
+**DD-016 addendum (bug found by the automated test suite).** The original
+rate-limit WHERE predicate could not see the current statement's own claims
+(same within-statement visibility issue as DD-010's first bug), so a single
+large claim batch bypassed the cap — caught by
+`claiming.integration.test.ts`. Fix: the rate budget is folded into the
+per-queue window rank (free_slots = LEAST(concurrency budget, rate
+budget)), making the cap exact within a batch; across concurrent workers it
+remains soft, as documented.

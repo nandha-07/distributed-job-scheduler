@@ -1,47 +1,14 @@
 /**
- * API server entry point: middleware pipeline + route mounting.
- * Order matters and is deliberate:
- *   request-context → json parser → routes → 404 → error handler (last).
+ * API process entry point: build the app (see app.ts) and run it with
+ * graceful shutdown. Kept separate from app construction for testability.
  */
-import express from "express";
 import { config } from "@jobs/config";
 import { createLogger } from "@jobs/core";
-import { pool, closePool } from "@jobs/db";
-import { requestContext } from "./middleware/request-context.js";
-import { errorHandler } from "./middleware/error-handler.js";
-import { authRouter } from "./routes/auth.routes.js";
-import { resourcesRouter } from "./routes/resources.routes.js";
-import { jobsRouter } from "./routes/jobs.routes.js";
+import { closePool } from "@jobs/db";
+import { createApp } from "./app.js";
 
 const log = createLogger("api");
-const app = express();
-
-app.use(requestContext);
-app.use(express.json({ limit: "1mb" }));
-
-/** Health: am I up, can I reach the DB? 200 healthy / 503 degraded. */
-app.get("/health", async (_req, res) => {
-  try {
-    await pool.query("SELECT 1");
-    res.json({ status: "ok", uptimeSeconds: Math.round(process.uptime()) });
-  } catch {
-    res.status(503).json({ status: "degraded", database: "unreachable" });
-  }
-});
-
-app.use("/api/v1", authRouter);
-app.use("/api/v1", resourcesRouter);
-app.use("/api/v1", jobsRouter);
-
-// Anything unmatched → uniform 404 (must come after all routes).
-app.use((_req, res) => {
-  res
-    .status(404)
-    .json({ error: { code: "NOT_FOUND", message: "Route not found" } });
-});
-
-// Error handler is ALWAYS last in the pipeline.
-app.use(errorHandler);
+const app = createApp();
 
 const server = app.listen(config.API_PORT, () => {
   log.info({ port: config.API_PORT }, "API server listening");
