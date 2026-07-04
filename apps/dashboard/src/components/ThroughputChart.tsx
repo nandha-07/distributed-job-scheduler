@@ -46,12 +46,12 @@ export function ThroughputChart({ points }: { points: ThroughputPoint[] }) {
             <g key={i}>
               <title>{`${b.label} — ${b.completed} completed, ${b.failed} failed`}</title>
               {/* faint track so empty minutes are still visible */}
-              <rect x={x} y={0} width={bw} height={H} fill="rgba(255,255,255,0.02)" />
+              <rect x={x} y={0} width={bw} height={H} fill="rgba(15,26,46,0.04)" />
               {total > 0 && (
                 <>
-                  <rect x={x} y={H - hDone} width={bw} height={hDone} rx={1.5} fill="#34d399" />
+                  <rect x={x} y={H - hDone} width={bw} height={hDone} rx={1.5} fill="#10b981" />
                   {b.failed > 0 && (
-                    <rect x={x} y={H - hDone - hFail} width={bw} height={hFail} rx={1.5} fill="#f87171" />
+                    <rect x={x} y={H - hDone - hFail} width={bw} height={hFail} rx={1.5} fill="#ef4444" />
                   )}
                 </>
               )}
