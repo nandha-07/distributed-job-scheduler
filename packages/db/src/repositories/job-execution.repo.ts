@@ -86,10 +86,18 @@ export async function startExecution(
     const job = jobRes.rows[0];
     if (!job) return null; // lost the job (reaper/cancel) — skip quietly
 
+    // Execution 'attempt' is a HISTORICAL sequence (max+1), not jobs.attempts:
+    // a DLQ retry resets the job's budget to 0 (DD-012), but execution rows
+    // for attempts 1..N already exist — reusing numbers would violate
+    // UNIQUE(job_id, attempt). Discovered live in M7 testing.
     const execRes = await tx.query<JobExecutionRow>(
       `INSERT INTO job_executions (job_id, attempt, worker_id, state)
-       VALUES ($1, $2, $3, 'running') RETURNING *`,
-      [jobId, job.attempts, workerId],
+       VALUES ($1,
+               (SELECT COALESCE(MAX(attempt), 0) + 1
+                  FROM job_executions WHERE job_id = $1),
+               $2, 'running')
+       RETURNING *`,
+      [jobId, workerId],
     );
     const execution = execRes.rows[0];
     if (!execution) throw new Error("INSERT returned no row");
@@ -118,28 +126,55 @@ export async function completeJob(
 }
 
 /**
- * M6 scope: failure is terminal-ish ('failed'). M7 adds the retry engine
- * (backoff → scheduled, or dead_letter when attempts are exhausted).
+ * Failure outcome — decided by the WORKER (which computed nextRunAt from
+ * the job's retry snapshot), executed here atomically:
+ *  - nextRunAt != null → back to 'scheduled' with run_at = nextRunAt
+ *    (the scheduler will promote it when due) — an automatic retry.
+ *  - nextRunAt == null → attempts exhausted → 'dead_letter' + DLQ entry.
+ * Either way the execution row records the error.
  */
-export async function failJob(
-  jobId: string,
-  executionId: string,
-  errorMessage: string,
-  errorStack?: string,
-): Promise<void> {
+export async function failJob(params: {
+  jobId: string;
+  executionId: string;
+  queueId: string;
+  attemptsUsed: number;
+  errorMessage: string;
+  errorStack?: string;
+  nextRunAt: Date | null;
+}): Promise<void> {
   await withTransaction(async (tx) => {
-    await tx.query(
-      `UPDATE jobs SET state = 'failed', finished_at = now(), last_error = $2
-        WHERE id = $1 AND state = 'running'`,
-      [jobId, errorMessage],
-    );
+    if (params.nextRunAt) {
+      await tx.query(
+        `UPDATE jobs
+            SET state = 'scheduled', run_at = $2, last_error = $3,
+                claimed_by = NULL, claimed_at = NULL
+          WHERE id = $1 AND state = 'running'`,
+        [params.jobId, params.nextRunAt, params.errorMessage],
+      );
+    } else {
+      await tx.query(
+        `UPDATE jobs
+            SET state = 'dead_letter', finished_at = now(), last_error = $2,
+                claimed_by = NULL, claimed_at = NULL
+          WHERE id = $1 AND state = 'running'`,
+        [params.jobId, params.errorMessage],
+      );
+      await tx.query(
+        `INSERT INTO dead_letter_entries (job_id, queue_id, final_error, attempts_used)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (job_id) DO UPDATE
+           SET final_error = $3, attempts_used = $4, moved_at = now(),
+               retried_at = NULL, retried_by = NULL`,
+        [params.jobId, params.queueId, params.errorMessage, params.attemptsUsed],
+      );
+    }
     await tx.query(
       `UPDATE job_executions
           SET state = 'failed', finished_at = now(), error_message = $2,
               error_stack = $3,
               duration_ms = (EXTRACT(EPOCH FROM (now() - started_at)) * 1000)::int
         WHERE id = $1`,
-      [executionId, errorMessage, errorStack ?? null],
+      [params.executionId, params.errorMessage, params.errorStack ?? null],
     );
   });
 }

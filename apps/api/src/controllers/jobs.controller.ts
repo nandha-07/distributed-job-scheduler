@@ -92,3 +92,21 @@ export async function cancel(req: Request, res: Response): Promise<void> {
   );
   res.json({ job });
 }
+
+export async function listDlq(req: Request, res: Response): Promise<void> {
+  const p = getPagination(req);
+  const { rows, total } = await jobsService.listDlq(
+    req.userId as string,
+    uuidParam(req, "queueId"),
+    p,
+  );
+  res.json(paginated(rows, total, p));
+}
+
+export async function retryFromDlq(req: Request, res: Response): Promise<void> {
+  const job = await jobsService.retryDlqJob(
+    req.userId as string,
+    uuidParam(req, "id"),
+  );
+  res.json({ job });
+}

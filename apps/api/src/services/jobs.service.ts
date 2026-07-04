@@ -4,6 +4,7 @@
  */
 import {
   batchesRepo,
+  dlqRepo,
   jobsRepo,
   pool,
   retryPoliciesRepo,
@@ -220,4 +221,33 @@ export async function cancelJob(
     );
   }
   return cancelled;
+}
+
+export async function listDlq(
+  userId: string,
+  queueId: string,
+  p: { limit: number; offset: number },
+) {
+  await requireQueueAccess(userId, queueId);
+  return dlqRepo.listByQueue(queueId, p.limit, p.offset);
+}
+
+/** Manual retry from DLQ — fresh attempt budget (DD-012). */
+export async function retryDlqJob(
+  userId: string,
+  jobId: string,
+): Promise<JobRow> {
+  const job = await jobsRepo.findById(jobId);
+  if (!job) throw notFound("Job");
+  await requireQueueAccess(userId, job.queue_id).catch(() => {
+    throw notFound("Job");
+  });
+  const retried = await dlqRepo.retryFromDlq(jobId, userId);
+  if (!retried) {
+    throw conflict(
+      "NOT_IN_DLQ",
+      `Job is '${job.state}' — only dead-lettered jobs can be retried this way`,
+    );
+  }
+  return retried;
 }

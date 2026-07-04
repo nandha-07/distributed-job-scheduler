@@ -25,6 +25,15 @@ export function errorHandler(
     return;
   }
 
+  // express.json() throws a SyntaxError with status 400 on malformed JSON.
+  // That's a client error, not a bug — answer 400, not 500.
+  if (err instanceof SyntaxError && "status" in err && (err as { status?: number }).status === 400) {
+    res.status(400).json({
+      error: { code: "INVALID_JSON", message: "Request body is not valid JSON" },
+    });
+    return;
+  }
+
   log.error(
     { requestId: req.requestId, err },
     "unhandled error — this is a bug",

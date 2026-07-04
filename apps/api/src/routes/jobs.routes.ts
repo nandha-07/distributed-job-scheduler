@@ -19,6 +19,10 @@ jobsRouter.get("/jobs/:id", asyncHandler(jobs.get));
 jobsRouter.post("/jobs/:id/cancel", asyncHandler(jobs.cancel));
 jobsRouter.get("/batches/:id", asyncHandler(jobs.getBatch));
 
+// Dead Letter Queue
+jobsRouter.get("/queues/:queueId/dlq", asyncHandler(jobs.listDlq));
+jobsRouter.post("/jobs/:id/retry", asyncHandler(jobs.retryFromDlq));
+
 // Recurring schedules (cron templates)
 jobsRouter.post("/queues/:queueId/schedules", validate(schedules.createScheduleSchema), asyncHandler(schedules.create));
 jobsRouter.get("/queues/:queueId/schedules", asyncHandler(schedules.list));

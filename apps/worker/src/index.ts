@@ -74,9 +74,15 @@ async function pollLoop(): Promise<void> {
       active++;
       // Deliberately NOT awaited: jobs run concurrently. The semaphore
       // counter (active) caps how many we take on.
-      void executeJob(job, worker.id, log).finally(() => {
-        active--;
-      });
+      void executeJob(job, worker.id, log)
+        .catch((err) => {
+          // A single job must NEVER crash the worker process. The job stays
+          // claimed/running until the reaper recovers it.
+          log.error({ err, jobId: job.id }, "executeJob threw unexpectedly");
+        })
+        .finally(() => {
+          active--;
+        });
     }
 
     // Adaptive polling: busy -> check again immediately; idle -> back off.

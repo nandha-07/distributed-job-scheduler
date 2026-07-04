@@ -75,3 +75,10 @@ the organization that (transitively) owns the resource.
 Idempotency contract: same `idempotencyKey` on the same queue returns the
 original job with `deduplicated: true` and status 200 (not 201). Clients can
 therefore retry job creation blindly after network failures.
+
+## Endpoints — M7 (DLQ)
+
+| Method & path | Purpose |
+|---|---|
+| GET /queues/:queueId/dlq?limit=&offset= | browse dead-lettered jobs (error, attempts, payload) |
+| POST /jobs/:id/retry | manual retry from DLQ: attempts reset to 0, job re-queued; 409 if job is not dead-lettered |

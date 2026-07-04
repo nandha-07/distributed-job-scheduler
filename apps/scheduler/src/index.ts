@@ -1,29 +1,40 @@
 /**
- * Scheduler entry point.
- * M2 scope: boot skeleton with tick-loop shape and graceful shutdown.
- * M7 will make each tick promote due delayed jobs and materialize cron runs.
+ * Scheduler process. Each tick (~1s):
+ *  1. Promote due jobs: scheduled → queued (delayed jobs + retry backoffs).
+ *  2. Materialize due cron schedules: spawn a job per occurrence and
+ *     advance next_run_at.
+ * All state lives in Postgres — if this process dies, jobs become late,
+ * never lost. FOR UPDATE SKIP LOCKED makes multiple schedulers safe.
  */
+import { config } from "@jobs/config";
 import { createLogger } from "@jobs/core";
-import { closePool } from "@jobs/db";
+import { closePool, schedulerRepo } from "@jobs/db";
 
 const log = createLogger("scheduler");
 
 let running = true;
 
-async function tickLoop() {
-  log.info("scheduler started");
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function tickLoop(): Promise<void> {
+  log.info({ tickMs: config.SCHEDULER_TICK_MS }, "scheduler started");
   while (running) {
-    // M7 will: UPDATE due scheduled jobs -> queued; compute next cron runs.
-    await sleep(1_000);
-    log.debug("tick (no-op until M7)");
+    try {
+      const promoted = await schedulerRepo.promoteDueJobs();
+      const spawned = await schedulerRepo.materializeDueSchedules();
+      if (promoted > 0 || spawned > 0) {
+        log.info({ promoted, spawned }, "tick");
+      }
+    } catch (err) {
+      log.error({ err }, "tick failed - will retry next tick");
+    }
+    await sleep(config.SCHEDULER_TICK_MS);
   }
   await closePool();
   log.info("scheduler stopped cleanly");
   process.exit(0);
-}
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function shutdown(signal: string) {
@@ -33,4 +44,4 @@ function shutdown(signal: string) {
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 
-void tickLoop();
+await tickLoop();

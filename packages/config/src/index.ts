@@ -42,6 +42,8 @@ const EnvSchema = z.object({
   WORKER_HEARTBEAT_INTERVAL_MS: z.coerce.number().int().min(1000).default(5000),
   WORKER_STALE_TIMEOUT_MS: z.coerce.number().int().min(5000).default(30000),
   WORKER_SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().min(1000).default(30000),
+
+  SCHEDULER_TICK_MS: z.coerce.number().int().min(100).default(1000),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

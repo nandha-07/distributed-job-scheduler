@@ -111,3 +111,25 @@ trade-off. Per-worker concurrency, by contrast, is a hard local limit
 Rather than a dedicated monitor process, every worker periodically reaps
 stale workers. All reaper steps are idempotent UPDATEs, so concurrent
 reaping is harmless, and the system heals as long as ANY worker survives.
+
+## DD-012: Manual DLQ retry resets the attempt budget
+
+A dead-lettered job re-queued by a human gets attempts=0. Rationale: the
+operator presumably fixed the cause, so the exhausted budget is stale
+information; without a reset the job would instantly dead-letter again.
+Matches Sidekiq's dead-set retry semantics. The DLQ entry records
+retried_at/retried_by for the audit trail.
+
+## DD-013: Retry backoff applies ±25% jitter always
+
+Synchronized failures (an outage failing 1000 jobs at once) must not
+produce synchronized retries (a thundering herd re-killing the recovering
+dependency). Delays are multiplied by a random 0.75–1.25 factor. The
+retry_policies.jitter flag is honored at policy level; the snapshot
+default keeps jitter on.
+
+**Addendum (bug found in M7 testing).** Resetting attempts collided with
+UNIQUE(job_id, attempt): the retried job's attempt numbers repeated. Fix:
+execution rows number attempts HISTORICALLY (max+1 per job), while
+jobs.attempts tracks the budget of the current life only. The audit trail
+now shows a dead-lettered-then-retried job as executions 1..3, 4..6.
