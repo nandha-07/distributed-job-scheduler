@@ -66,7 +66,10 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="layout">
       <div className="topbar">
-        <h1>⚙ Job Scheduler {project ? `— ${project.name}` : ""}</h1>
+        <h1>
+          <span className="brand-mark" style={{ width: 30, height: 30, fontSize: 15 }}>⚙</span>
+          Job Scheduler
+        </h1>
         <button onClick={onLogout}>Log out</button>
       </div>
 
